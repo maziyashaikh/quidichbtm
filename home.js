@@ -1,128 +1,172 @@
-const video = document.getElementById('scrollVideo');
-const firstText = document.getElementById('text-1');
-const backToTopBtn = document.getElementById('backToTopBtn');
-const progressCircle = backToTopBtn.querySelector('circle');
-const radius = progressCircle.r.baseVal.value;
-const circumference = 2 * Math.PI * radius;
-let videoStarted = false;
-
-// Set up the progress circle
-progressCircle.style.strokeDasharray = `${circumference} ${circumference}`;
-progressCircle.style.strokeDashoffset = circumference;
-
-function setProgress(value) {
-    const offset = circumference - (value / 100) * circumference;
-    progressCircle.style.strokeDashoffset = offset;
-}
-
-function disableScroll() {
-    document.body.style.overflow = 'hidden';
-}
-
-function enableScroll() {
-    document.body.style.overflow = 'auto';
-}
-
-function pauseVideo() {
-    video.pause();
-}
-
-function resumeVideo() {
-    video.play();
-}
-
-// Reset video on page load
-window.addEventListener('load', () => {
-    video.pause();
-    video.currentTime = 0;
-    videoStarted = false;
-    window.scrollTo(0, 0);
-});
-
-// Start video and handle text visibility on scroll
-window.addEventListener('scroll', () => {
-    const scrollY = window.scrollY;
-    if (scrollY > 100 && !videoStarted) {
-        video.play();
-        videoStarted = true;
-
-        // Show `text-1` after 15 seconds
-        setTimeout(() => {
-            firstText.style.display = 'block';
-            setTimeout(() => {
-                firstText.style.opacity = 1;
-                const progressBar = document.getElementById('timeline-1');
-                if (progressBar) progressBar.style.width = '70%'; // Fill progress bar
-            }, 10);
-
-            // Hide `text-1` after 4 seconds
-            setTimeout(() => {
-                firstText.style.opacity = 0;
-                const progressBar = document.getElementById('timeline-1');
-                if (progressBar) progressBar.style.width = '0'; // Reset progress bar
-                setTimeout(() => {
-                    firstText.style.display = 'none';
-                }, 500); // Allow fade-out to complete
-            }, 4000);
-        }, 15000); // Delay for 15 seconds
-
-        // Trigger other texts with timing
-        showTextWithTiming();
-    }
-});
-
-// Update progress bar for the circular button
-function updateProgress() {
-    const videoDuration = video.duration;
-    const currentTime = video.currentTime;
-    const progress = (currentTime / videoDuration) * 100;
-    setProgress(progress);
-}
-
-// Listen for video progress updates
-video.addEventListener('timeupdate', updateProgress);
-
-// Reset video and scroll position on "Back to Top" button click
-backToTopBtn.addEventListener('click', () => {
-    video.currentTime = 0;
-    window.scrollTo(0, 0);
-
-    firstText.style.display = 'block';
-    firstText.style.opacity = 1;
-});
-
-// Handle text visibility and progress bar for other texts
-function showTextWithTiming() {
-    const timing = [
-        { id: 'text-2', barId: 'timeline-2', delay: 25000, duration: 4000 }, // Display for 4 seconds
-        { id: 'text-3', barId: 'timeline-3', delay: 33000, duration: 5000 }, // Display for 5 seconds
-        { id: 'text-4', barId: 'timeline-4', delay: 41000, duration: 4000 }, // Display for 4 seconds
-        { id: 'text-5', barId: 'timeline-5', delay: 53000, duration: 4000 }, // Display for 4 seconds
-        { id: 'text-6', barId: 'timeline-6', delay: 59000, duration: 3000 }  // Display for 4 seconds
+document.addEventListener("DOMContentLoaded", () => {
+    const shimmerWave = document.getElementById("shimmerWave");
+    const video = document.getElementById("preloaderVideo");
+    const preloader = document.getElementById("preloader");
+    const progressBar = document.getElementById("progressBar");
+    const leftBlob = document.querySelector(".blob.left");
+    const rightBlob = document.querySelector(".blob.right");
+    const firstVideoContainer = document.getElementById("firstVideoContainer");
+    const secondVideoContainer = document.getElementById("secondVideoContainer");
+    const scrollVideo1 = document.getElementById("scrollVideo1");
+    const scrollVideo2 = document.getElementById("scrollVideo2");
+    let firstVideoEnded = false;
+    let isPaused = false;
+    let currentPauseIndex = 0;
+    const pausePoints = [
+        { time: 19, textId: "text-1" },
+        { time: 28, textId: "text-2" },
+        { time: 39, textId: "text-3" },
+        { time: 43, textId: "text-4" },
+        { time: 59, textId: "text-5" },
+        { time: 66, textId: "text-6" },
     ];
+    function disableScroll() {
+        document.body.style.overflow = "hidden";
+    }
+    function enableScroll() {
+        document.body.style.overflow = "";
+    }
+    function splitTextToSpans(element) {
+        const text = element.textContent.trim();
+        element.innerHTML = "";
+        const spans = text.split("").map((char) => {
+            const span = document.createElement("span");
+            span.textContent = char === " " ? "\u00A0" : char;
+            return span;
+        });
+        spans.forEach((span) => element.appendChild(span));
+    }
+    function animateBlobs() {
+        gsap.timeline({ repeat: -1, yoyo: true })
+            .to(leftBlob, { y: "-50vh", duration: 6, ease: "power1.inOut" })
+            .to(leftBlob, { y: "50vh", duration: 6, ease: "power1.inOut" });
 
-    timing.forEach(({ id, barId, delay, duration }) => {
-        setTimeout(() => {
-            const text = document.getElementById(id);
-            const progressBar = document.getElementById(barId);
+        gsap.timeline({ repeat: -1, yoyo: true })
+            .to(rightBlob, { y: "50vh", duration: 6, ease: "power1.inOut" })
+            .to(rightBlob, { y: "-50vh", duration: 6, ease: "power1.inOut" });
+    }
+    function animateText() {
+        splitTextToSpans(shimmerWave);
+        const timeline = gsap.timeline();
+        timeline
+            .to("#shimmerWave span", {
+                opacity: 1,
+                y: 0,
+                duration: 0.5,
+                stagger: 0.05,
+            })
+            .to("#shimmerWave", {
+                scale: 0.5,
+                y: -window.innerHeight,
+                duration: 1,
+                ease: "power3.in",
+                onComplete: () => {
+                    gsap.to(video, {
+                        top: "50%",
+                        transform: "translate(-50%, -50%)",
+                        opacity: 1,
+                        duration: 1,
+                        ease: "power3.out",
+                        onStart: () => {
+                            video.classList.remove("hidden");
+                            video.play();
+                        },
+                        onComplete: () => startProgressBar(),
+                    });
+                },
+            });
+    }
+    function startProgressBar() {
+        video.addEventListener("timeupdate", () => {
+            const progress = (video.currentTime / video.duration) * 100;
+            progressBar.style.width = `${progress}%`;
+        });
+        video.addEventListener("ended", () => {
+            gsap.to(preloader, {
+                opacity: 0,
+                duration: 1,
+                onComplete: () => {
+                    preloader.style.display = "none";
+                    enableScroll();
+                },
+            });
+        });
+    }
+    function handleFirstVideoScroll() {
+    const scrollHeight = document.body.scrollHeight - window.innerHeight;
+    let ticking = false;
+    function updateVideoPlayback() {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(() => {
+            const scrollTop = window.pageYOffset;
+            const scrollPercentage = scrollTop / scrollHeight;
+            if (!firstVideoEnded) {
+                const clampedScrollPercentage = Math.min(Math.max(scrollPercentage, 0), 1);
+                scrollVideo1.currentTime = scrollVideo1.duration * clampedScrollPercentage;
 
-            if (text) {
-                // Show the text and start the progress bar
-                text.style.display = 'block';
-                setTimeout(() => {
-                    text.style.opacity = 1;
-                    if (progressBar) progressBar.style.width = '100%'; // Fill progress bar
-                }, 10);
-
-                // Hide the text and reset the progress bar after the specified duration
-                setTimeout(() => {
-                    text.style.opacity = 0;
-                    if (progressBar) progressBar.style.width = '0'; // Reset progress bar
-                    setTimeout(() => {
-                        text.style.display = 'none';
-                    }, 500); // Allow fade-out to complete
-                }, duration); // Use the specified duration here
+                if (clampedScrollPercentage >= 1) {
+                    firstVideoEnded = true;
+                    scrollVideo1.pause();
+                    firstVideoContainer.style.display = "none";
+                    secondVideoContainer.style.display = "block";
+                    scrollVideo2.play();
+                    manageSecondVideoWithPauses();
+                }
             }
-        }, delay);
-    });
+
+            ticking = false;
+        });
+    }
+
+    window.addEventListener("scroll", updateVideoPlayback);
 }
+    function manageSecondVideoWithPauses() {
+        scrollVideo2.addEventListener("timeupdate", () => {
+            if (
+                currentPauseIndex < pausePoints.length &&
+                scrollVideo2.currentTime >= pausePoints[currentPauseIndex].time &&
+                !isPaused
+            ) {
+                scrollVideo2.pause();
+                isPaused = true;
+
+                const { textId } = pausePoints[currentPauseIndex];
+                const textElement = document.getElementById(textId);
+                const progressBar = document.getElementById(`timeline-${textId.split("-")[1]}`);
+
+                if (textElement) {
+                    textElement.style.display = "block";
+                    textElement.style.opacity = 1;
+                    if (progressBar) progressBar.style.width = "100%";
+                }
+            }
+        });
+        window.addEventListener("scroll", () => {
+            if (isPaused && currentPauseIndex < pausePoints.length) {
+                const { textId } = pausePoints[currentPauseIndex];
+                const textElement = document.getElementById(textId);
+
+                if (textElement) {
+                    textElement.style.opacity = 0;
+                    if (progressBar) progressBar.style.width = "0%";
+
+                    setTimeout(() => {
+                        textElement.style.display = "none";
+                    }, 500);
+                }
+
+                isPaused = false;
+                scrollVideo2.play();
+                currentPauseIndex++;
+            }
+        });
+    }
+    function initializePreloader() {
+        disableScroll();
+        animateBlobs();
+        animateText();
+    }
+    window.addEventListener("scroll", handleFirstVideoScroll);
+    initializePreloader();
+});
